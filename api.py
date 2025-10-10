@@ -6,6 +6,11 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import normalize
 from sklearn.metrics.pairwise import cosine_similarity
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+
+
+
 
 
 # Load saved models and artifacts
@@ -98,3 +103,10 @@ def root():
 def recommend(req: RecRequest):
     recs = recommend_for_user_api(req.user_id, k=req.k)
     return {"user": req.user_id, "recs": recs}
+
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
+
+@app.get("/ui", response_class=HTMLResponse)
+def get_ui():
+    with open("frontend/index.html", "r", encoding="utf-8") as f:
+        return f.read()
