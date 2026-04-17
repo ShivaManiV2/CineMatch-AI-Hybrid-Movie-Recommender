@@ -1,6 +1,8 @@
 # api.py
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from pydantic import BaseModel
+from typing import List
+import time
 import joblib
 import pandas as pd
 import numpy as np
@@ -26,6 +28,10 @@ inv_item_map = {v: k for k, v in item_map.items()}
 # Load interactions if needed
 ratings = pd.read_csv("data/ratings.csv")  # adjust path
 
+# Precompute top globally popular movies for cold start
+popular_movies_df = ratings.groupby('movieId').size().reset_index(name='count').sort_values('count', ascending=False)
+top_popular_movies = popular_movies_df['movieId'].tolist()
+
 # Precompute TF-IDF matrix
 movies_sub = movies_index.reset_index()
 tfidf_matrix = tfidf.transform(movies_sub['text'])
@@ -38,9 +44,25 @@ tfidf_index = {row['i_idx']: idx for idx, row in movies_sub.reset_index().iterro
 
 app = FastAPI()
 
-class RecRequest(BaseModel):
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    response.headers["X-Process-Time"] = str(round(process_time, 5))
+    return response
+
+class RecommendationRequest(BaseModel):
     user_id: int
-    k: int = 10
+    num_rec: int = 10
+
+class MovieResponse(BaseModel):
+    movieId: int
+    score: float
+
+class RecommendationResponse(BaseModel):
+    user: int
+    recs: List[MovieResponse]
 
 
 # Helper functions
@@ -79,6 +101,10 @@ def build_feature_row(user_id, item_id):
     return features
 
 def recommend_for_user_api(user_id, k=10):
+    if user_id not in user_map:
+        # Cold start logic: Return the top popular movies
+        return [{"movieId": int(mid), "score": 1.0} for mid in top_popular_movies[:k]]
+
     candidates = recommend_candidates_for_user(user_id, topk_content=200)
     rows = []
     for cid in candidates:
@@ -86,7 +112,7 @@ def recommend_for_user_api(user_id, k=10):
         rows.append({'movieId': cid, **feats})
     dfc = pd.DataFrame(rows)
     if dfc.empty:
-        return []
+        return [{"movieId": int(mid), "score": 1.0} for mid in top_popular_movies[:k]]
     FEATURE_COLS = ['collab_score','content_sim','popularity','is_popular_top100']
     dfc['score'] = gbm.predict(dfc[FEATURE_COLS])
     dfc = dfc.sort_values('score', ascending=False).head(k)
@@ -99,9 +125,9 @@ def recommend_for_user_api(user_id, k=10):
 def root():
     return {"message": "Recommender API running"}
 
-@app.post("/recommend")
-def recommend(req: RecRequest):
-    recs = recommend_for_user_api(req.user_id, k=req.k)
+@app.post("/recommend", response_model=RecommendationResponse)
+def recommend(req: RecommendationRequest):
+    recs = recommend_for_user_api(req.user_id, k=req.num_rec)
     return {"user": req.user_id, "recs": recs}
 
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
