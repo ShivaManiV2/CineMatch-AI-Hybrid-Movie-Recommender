@@ -41,7 +41,6 @@ venv.bak/
 data/*.csv
 models/*.joblib
 models/*.pkl
-test_api.py
 .DS_Store
 
 # Docker
