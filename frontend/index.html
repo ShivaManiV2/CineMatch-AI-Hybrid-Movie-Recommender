@@ -3,90 +3,241 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Movie Recommender</title>
-  <!-- Bootstrap CSS -->
+  <title>CineMatch | Hybrid Recommender</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body { 
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-      background: #f8f9fa; 
-      padding-top: 50px; 
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --accent-color: #8b5cf6;
+      --accent-glow: rgba(139, 92, 246, 0.5);
+      --text-main: #f8fafc;
+      --text-dim: #94a3b8;
     }
-    .container { max-width: 700px; }
-    h1 { text-align: center; margin-bottom: 30px; }
-    table th { background-color: #343a40; color: #fff; }
-    table td, table th { text-align: center; }
-    #recs { margin-top: 20px; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--bg-color);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(139, 92, 246, 0.15) 0, transparent 50%), 
+        radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.15) 0, transparent 50%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .glass-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 40px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      width: 100%;
+      max-width: 600px;
+      transition: transform 0.3s ease;
+    }
+
+    h1 {
+      font-weight: 700;
+      letter-spacing: -1px;
+      background: linear-gradient(to right, #fff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: var(--text-dim);
+      font-size: 0.95rem;
+      margin-bottom: 32px;
+    }
+
+    .form-label {
+      color: var(--text-dim);
+      font-weight: 500;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .form-control {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: #fff;
+      padding: 12px 16px;
+      transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+      background: rgba(15, 23, 42, 0.8);
+      border-color: var(--accent-color);
+      box-shadow: 0 0 0 4px var(--accent-glow);
+      color: #fff;
+    }
+
+    .btn-primary {
+      background: var(--accent-color);
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      transition: all 0.3s ease;
+      margin-top: 10px;
+    }
+
+    .btn-primary:hover {
+      background: #7c3aed;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px -5px var(--accent-glow);
+    }
+
+    #telemetry {
+      font-size: 0.75rem;
+      color: var(--accent-color);
+      margin-top: 20px;
+      text-align: center;
+      font-family: monospace;
+      opacity: 0.8;
+    }
+
+    .result-item {
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      padding: 12px 20px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+      animation: slideUp 0.4s ease forwards;
+      opacity: 0;
+    }
+
+    .result-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(139, 92, 246, 0.3);
+    }
+
+    .movie-id { font-weight: 600; color: #fff; }
+    .score-badge {
+      background: rgba(139, 92, 246, 0.2);
+      color: var(--accent-color);
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .loader {
+      display: none;
+      width: 24px;
+      height: 24px;
+      border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <h1>🎬 Movie Recommender</h1>
+<div class="glass-card">
+  <h1>CineMatch AI</h1>
+  <p class="subtitle">Hybrid ML Motion Picture Recommendation Engine</p>
 
   <div class="mb-3">
-    <label for="user_id" class="form-label">User ID</label>
-    <input type="number" class="form-control" id="user_id" placeholder="Enter User ID">
+    <label for="user_id" class="form-label">Target User ID</label>
+    <input type="number" class="form-control" id="user_id" placeholder="e.g. 1 (Existing) or 999 (New)">
   </div>
 
-  <div class="mb-3">
-    <label for="k" class="form-label">Number of Recommendations</label>
-    <input type="number" class="form-control" id="k" value="10">
+  <div class="mb-4">
+    <label for="num_rec" class="form-label">Count</label>
+    <input type="number" class="form-control" id="num_rec" value="10">
   </div>
 
-  <div class="d-grid mb-4">
-    <button class="btn btn-primary btn-lg" onclick="getRecommendations()">Get Recommendations</button>
+  <div class="d-grid">
+    <button class="btn btn-primary" id="btn-submit" onclick="getRecommendations()">
+      GENERATE RECOMMENDATIONS
+    </button>
   </div>
 
-  <div id="recs"></div>
+  <div class="loader" id="loader"></div>
+  <div id="telemetry"></div>
+  <div id="recs" class="mt-4"></div>
 </div>
-
-<!-- Bootstrap JS + Popper -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
 async function getRecommendations() {
   const userId = document.getElementById('user_id').value;
-  const k = document.getElementById('k').value;
-
-  if (!userId) {
-    alert('Please enter a user ID');
-    return;
-  }
-
+  const numRec = document.getElementById('num_rec').value;
+  const loader = document.getElementById('loader');
   const recsDiv = document.getElementById('recs');
-  recsDiv.innerHTML = '<p class="text-info">Loading recommendations...</p>';
+  const telDiv = document.getElementById('telemetry');
+  const btn = document.getElementById('btn-submit');
+
+  if (!userId) return alert('Please enter a User ID');
+
+  recsDiv.innerHTML = '';
+  telDiv.innerHTML = '';
+  loader.style.display = 'block';
+  btn.disabled = true;
 
   try {
     const response = await fetch('/recommend', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: parseInt(userId), k: parseInt(k) })
+      body: JSON.stringify({ user_id: parseInt(userId), num_rec: parseInt(numRec) })
     });
 
-    if (!response.ok) {
-      throw new Error(`Server error: ${response.status}`);
+    const processTime = response.headers.get('X-Process-Time');
+    const data = await response.json();
+    
+    loader.style.display = 'none';
+    btn.disabled = false;
+    
+    if (processTime) {
+      telDiv.innerHTML = `ENGINE LATENCY: ${processTime}s | DATA: LOCAL_CACHE`;
     }
 
-    const data = await response.json();
     if (!data.recs || data.recs.length === 0) {
-      recsDiv.innerHTML = '<p class="text-danger">No recommendations found.</p>';
+      recsDiv.innerHTML = '<p class="text-center text-muted">No data found for this profile.</p>';
       return;
     }
 
-    let html = '<h2 class="mt-4">Top Recommendations</h2>';
-    html += '<table class="table table-striped table-bordered mt-2">';
-    html += '<thead><tr><th>Movie ID</th><th>Score</th></tr></thead><tbody>';
-
-    data.recs.forEach(r => {
-      html += `<tr><td>${r.movieId}</td><td>${r.score.toFixed(3)}</td></tr>`;
+    data.recs.forEach((r, index) => {
+      const item = document.createElement('div');
+      item.className = 'result-item';
+      item.style.animationDelay = `${index * 0.05}s`;
+      item.innerHTML = `
+        <span class="movie-id">Movie #${r.movieId}</span>
+        <span class="score-badge">${(r.score * 100).toFixed(1)}% Match</span>
+      `;
+      recsDiv.appendChild(item);
     });
 
-    html += '</tbody></table>';
-    recsDiv.innerHTML = html;
-
   } catch (err) {
-    recsDiv.innerHTML = `<p class="text-danger">Error: ${err.message}</p>`;
+    loader.style.display = 'none';
+    btn.disabled = false;
+    recsDiv.innerHTML = `<p class="text-danger text-center">Connection failed: ${err.message}</p>`;
   }
 }
 </script>
